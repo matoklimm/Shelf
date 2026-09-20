@@ -27,7 +27,7 @@ class BookCopy {
             is AddBookCopyCommand -> listOf(BookCopyAddedEvent(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
 
             is BorrowBookCopyCommand -> {
-                checkStatus(BookCopyStatus.AVAILABLE)
+                checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE)
 
                 val borrowedUntil = command.borrowedUntil ?: LocalDate.now().plusDays(14)
                 check(borrowedUntil < LocalDate.now().plusDays(31)) {
@@ -42,18 +42,18 @@ class BookCopy {
             }
 
             is ReturnBookCopyCommand -> {
-                checkStatus(BookCopyStatus.BORROWED)
+                checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.BORROWED)
 
                 listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = Instant.now()))
             }
 
             is ReportBookCopyDamageCommand -> {
-                checkStatus(BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
+                checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
                 listOf(BookCopyDamagedEvent(bookCopyId = command.bookCopyId, description = command.description))
             }
 
             is RepairBookCopyCommand -> {
-                checkStatus(BookCopyStatus.DAMAGED)
+                checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.DAMAGED)
                 listOf(
                     BookCopyRepairedEvent(
                         bookCopyId = command.bookCopyId,
@@ -78,7 +78,7 @@ class BookCopy {
             }
 
             is BookCopyBorrowedEvent -> {
-                checkStatus(BookCopyStatus.AVAILABLE)
+                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE)
 
                 bookCopyStatus = BookCopyStatus.BORROWED
                 bookCopyLoan = BookCopyLoan(
@@ -87,25 +87,28 @@ class BookCopy {
             }
 
             is BookCopyReturnedEvent -> {
-                checkStatus(BookCopyStatus.BORROWED)
+                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.BORROWED)
 
                 bookCopyStatus = BookCopyStatus.AVAILABLE
                 bookCopyLoan = null
             }
 
             is BookCopyDamagedEvent -> {
-                checkStatus(BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
+                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
                 bookCopyStatus = BookCopyStatus.DAMAGED
             }
 
             is BookCopyRepairedEvent -> {
-                checkStatus(BookCopyStatus.DAMAGED)
+                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.DAMAGED)
                 if (event.isDamageRepaired) bookCopyStatus = BookCopyStatus.AVAILABLE
             }
         }
     }
 
-    private fun checkStatus(vararg allowed: BookCopyStatus) {
+    private fun checkStatus(bookCopyId: BookCopyId, vararg allowed: BookCopyStatus) {
+        check(id == bookCopyId) {
+            "BookCopy(${id.id}) was handled/applied with incorrect call argument $bookCopyId.\nThis must not happen and is a serious error."
+        }
         check(bookCopyStatus in allowed) {
             "BookCopy(${id.id}) must be in one of states ${allowed.toList()} but is in '$bookCopyStatus'"
         }
