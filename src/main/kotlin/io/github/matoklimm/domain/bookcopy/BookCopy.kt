@@ -31,7 +31,12 @@ class BookCopy {
                 check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
                     "BookCopy is not in state '${BookCopyStatus.AVAILABLE}' but rather in $bookCopyStatus"
                 }
+
                 val borrowedUntil = command.borrowedUntil ?: LocalDate.now().plusDays(14)
+                check(borrowedUntil < LocalDate.now().plusDays(31)) {
+                    "BookCopy must be borrowed for 30 days or less. $borrowedUntil is exceeding that range"
+                }
+
                 listOf(
                     BookCopyBorrowedEvent(
                         bookCopyId = command.bookCopyId,
