@@ -61,6 +61,7 @@ class BookCopyTest : StringSpec({
         // Then
         aggregate.isbn shouldBe bookCopyAdded.isbn
         aggregate.id shouldBe bookCopyId
+        aggregate.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
     }
 
     "BookCopyAdded cannot be processed twice" {
@@ -86,5 +87,6 @@ class BookCopyTest : StringSpec({
         // Finally
         aggregate.id shouldBe firstEvent.id
         aggregate.isbn shouldBe firstEvent.isbn
+        aggregate.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
     }
 })

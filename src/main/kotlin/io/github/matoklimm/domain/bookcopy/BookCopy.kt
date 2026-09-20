@@ -8,14 +8,14 @@ import kotlin.uuid.Uuid
 
 class BookCopy {
 
-    private lateinit var idState: BookCopyId
-    private lateinit var isbnState: String
+    lateinit var id: BookCopyId
+        private set
 
-    val id: BookCopyId
-        get() = idState
+    lateinit var isbn: String
+        private set
 
-    val isbn: String
-        get() = isbnState
+    lateinit var bookCopyStatus: BookCopyStatus
+        private set
 
     fun handle(command: BookCopyCommand): List<BookCopyEvent> {
         return when (command) {
@@ -26,12 +26,13 @@ class BookCopy {
     fun apply(event: BookCopyEvent) {
         when (event) {
             is BookCopyAdded -> {
-                check(!::idState.isInitialized) {
-                    "BookCopy has already been added, calling ${event.id} on initialized BookCopy(${idState.id})"
+                check(!::id.isInitialized) {
+                    "BookCopy has already been added, calling ${event.id} on initialized BookCopy(${id.id})"
                 }
 
-                idState = event.id
-                isbnState = event.isbn
+                id = event.id
+                isbn = event.isbn
+                bookCopyStatus = BookCopyStatus.AVAILABLE
             }
         }
     }
