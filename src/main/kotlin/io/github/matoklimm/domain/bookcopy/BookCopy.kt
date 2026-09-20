@@ -1,11 +1,7 @@
 package io.github.matoklimm.domain.bookcopy
 
 import io.github.matoklimm.domain.bookcopy.commands.*
-import io.github.matoklimm.domain.bookcopy.events.BookCopyAddedEvent
-import io.github.matoklimm.domain.bookcopy.events.BookCopyBorrowedEvent
-import io.github.matoklimm.domain.bookcopy.events.BookCopyDamagedEvent
-import io.github.matoklimm.domain.bookcopy.events.BookCopyEvent
-import io.github.matoklimm.domain.bookcopy.events.BookCopyReturnedEvent
+import io.github.matoklimm.domain.bookcopy.events.*
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.uuid.Uuid
@@ -46,15 +42,25 @@ class BookCopy {
             }
 
             is ReturnBookCopyCommand -> {
-                checkStatus( BookCopyStatus.BORROWED)
+                checkStatus(BookCopyStatus.BORROWED)
 
                 listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = Instant.now()))
             }
 
             is ReportBookCopyDamageCommand -> {
                 checkStatus(BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
-
                 listOf(BookCopyDamagedEvent(bookCopyId = command.bookCopyId, description = command.description))
+            }
+
+            is RepairBookCopyCommand -> {
+                checkStatus(BookCopyStatus.DAMAGED)
+                listOf(
+                    BookCopyRepairedEvent(
+                        bookCopyId = command.bookCopyId,
+                        description = command.description,
+                        isDamageRepaired = command.isDamageRepaired
+                    )
+                )
             }
         }
     }
@@ -89,9 +95,12 @@ class BookCopy {
 
             is BookCopyDamagedEvent -> {
                 checkStatus(BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
-
-                damageDescription = event.description
                 bookCopyStatus = BookCopyStatus.DAMAGED
+            }
+
+            is BookCopyRepairedEvent -> {
+                checkStatus(BookCopyStatus.DAMAGED)
+                if (event.isDamageRepaired) bookCopyStatus = BookCopyStatus.AVAILABLE
             }
         }
     }
