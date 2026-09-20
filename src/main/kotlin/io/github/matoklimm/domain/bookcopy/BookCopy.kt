@@ -3,9 +3,11 @@ package io.github.matoklimm.domain.bookcopy
 import io.github.matoklimm.domain.bookcopy.commands.AddBookCopyCommand
 import io.github.matoklimm.domain.bookcopy.commands.BookCopyCommand
 import io.github.matoklimm.domain.bookcopy.commands.BorrowBookCopyCommand
+import io.github.matoklimm.domain.bookcopy.commands.ReturnBookCopyCommand
 import io.github.matoklimm.domain.bookcopy.events.BookCopyAddedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyBorrowedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyEvent
+import io.github.matoklimm.domain.bookcopy.events.BookCopyReturnedEvent
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.uuid.Uuid
@@ -27,14 +29,15 @@ class BookCopy {
     fun handle(command: BookCopyCommand): List<BookCopyEvent> {
         return when (command) {
             is AddBookCopyCommand -> listOf(BookCopyAddedEvent(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
+
             is BorrowBookCopyCommand -> {
                 check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
-                    "BookCopy is not in state '${BookCopyStatus.AVAILABLE}' but rather in $bookCopyStatus"
+                    "BookCopy(${id.id}) is not in state '${BookCopyStatus.AVAILABLE}' but rather in $bookCopyStatus"
                 }
 
                 val borrowedUntil = command.borrowedUntil ?: LocalDate.now().plusDays(14)
                 check(borrowedUntil < LocalDate.now().plusDays(31)) {
-                    "BookCopy must be borrowed for 30 days or less. $borrowedUntil is exceeding that range"
+                    "BookCopy(${id.id}) must be borrowed for 30 days or less. $borrowedUntil is exceeding that range"
                 }
 
                 listOf(
@@ -46,6 +49,14 @@ class BookCopy {
                     )
                 )
             }
+
+            is ReturnBookCopyCommand -> {
+                check(bookCopyStatus == BookCopyStatus.BORROWED) {
+                    "BookCopy(${id.id}) must be borrowed in order to be returned, but is currently in '${bookCopyStatus}' state"
+                }
+
+                listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = LocalDate.now()))
+            }
         }
     }
 
@@ -53,7 +64,7 @@ class BookCopy {
         when (event) {
             is BookCopyAddedEvent -> {
                 check(!::id.isInitialized) {
-                    "BookCopy has already been added, calling ${event.bookCopyId} on initialized BookCopy(${id.id})"
+                    "BookCopy(${id.id}) has already been added, calling ${event.bookCopyId} on initialized BookCopy(${id.id})"
                 }
 
                 id = event.bookCopyId
@@ -63,7 +74,7 @@ class BookCopy {
 
             is BookCopyBorrowedEvent -> {
                 check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
-                    "BookCopy must be in state '${BookCopyStatus.AVAILABLE}' to be borrowed, but is in $bookCopyStatus"
+                    "BookCopy(${id.id}) must be in state '${BookCopyStatus.AVAILABLE}' to be borrowed, but is in $bookCopyStatus"
                 }
 
                 bookCopyStatus = BookCopyStatus.BORROWED
@@ -72,6 +83,11 @@ class BookCopy {
                     borrowedAt = event.borrowedAt,
                     borrowedUntil = event.borrowedUntil
                 )
+            }
+
+            is BookCopyReturnedEvent -> {
+                bookCopyStatus = BookCopyStatus.AVAILABLE
+                bookCopyLoan = null
             }
         }
     }
