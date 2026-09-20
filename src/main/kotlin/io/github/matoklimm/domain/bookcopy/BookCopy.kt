@@ -22,6 +22,12 @@ class BookCopy {
     fun handle(command: BookCopyCommand): List<BookCopyEvent> {
         return when (command) {
             is AddBookCopyCommand -> listOf(BookCopyAdded(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
+            is BorrowBookCopyCommand -> {
+                check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
+                    "BookCopy is not in state '${BookCopyStatus.AVAILABLE}' but rather in $bookCopyStatus"
+                }
+                listOf(BookCopyBorrowedEvent(bookCopyId = command.bookCopyId, userId = command.userId))
+            }
         }
     }
 
@@ -35,6 +41,13 @@ class BookCopy {
                 id = event.bookCopyId
                 isbn = event.isbn
                 bookCopyStatus = BookCopyStatus.AVAILABLE
+            }
+            is BookCopyBorrowedEvent -> {
+                check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
+                    "BookCopy must be in state '${BookCopyStatus.AVAILABLE}' to be borrowed, but is in $bookCopyStatus"
+                }
+
+                bookCopyStatus = BookCopyStatus.BORROWED
             }
         }
     }
