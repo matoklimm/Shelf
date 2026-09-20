@@ -56,7 +56,7 @@ class BookCopyTest : StringSpec({
         aggregate.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
     }
 
-    "BookCopyAdded cannot be processed twice" {
+    "BookCopyAdded cannot be processed twice on same aggreagte" {
         val firstEvent = BookCopyAddedEvent(
             bookCopyId = BookCopyId(Uuid.random()),
             isbn = "978-1-4088-5565-2"
