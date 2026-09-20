@@ -62,6 +62,16 @@ class BookCopy {
                     )
                 )
             }
+
+            is MarkBookCopyAsLostCommand -> {
+                checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED, BookCopyStatus.DAMAGED)
+                listOf(BookCopyLostEvent(bookCopyId = command.bookCopyId, lostAt = Instant.now()))
+            }
+
+            is MarkBookCopyAsFoundCommand -> {
+                checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.LOST)
+                listOf(BookCopyFoundEvent(bookCopyId = command.bookCopyId, foundAt = Instant.now()))
+            }
         }
     }
 
@@ -101,6 +111,16 @@ class BookCopy {
             is BookCopyRepairedEvent -> {
                 checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.DAMAGED)
                 if (event.isDamageRepaired) bookCopyStatus = BookCopyStatus.AVAILABLE
+            }
+
+            is BookCopyLostEvent -> {
+                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED, BookCopyStatus.DAMAGED)
+                bookCopyStatus = BookCopyStatus.LOST
+            }
+
+            is BookCopyFoundEvent -> {
+                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.LOST)
+                bookCopyStatus = BookCopyStatus.AVAILABLE
             }
         }
     }
