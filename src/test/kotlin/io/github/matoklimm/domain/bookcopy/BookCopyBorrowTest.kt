@@ -128,7 +128,7 @@ class BookCopyBorrowTest : StringSpec({
         }
     }
 
-    "borrowing a book copy applies the borrowed event" {
+    "borrowing a book copy changes its status to borrowed" {
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
@@ -151,6 +151,7 @@ class BookCopyBorrowTest : StringSpec({
         bookCopy.bookCopyStatus shouldBe BookCopyStatus.BORROWED
         bookCopy.bookCopyLoan!!.borrowedBy shouldBe "user-123"
         bookCopy.bookCopyLoan!!.borrowedUntil shouldBe borrowedUntil
+        bookCopy.bookCopyLoan!!.extendCount shouldBe 0
     }
 })
 

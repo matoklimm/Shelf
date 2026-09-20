@@ -97,7 +97,7 @@ class BookCopy {
 
                 bookCopyStatus = BookCopyStatus.BORROWED
                 bookCopyLoan = BookCopyLoan(
-                    borrowedBy = event.userId, borrowedAt = event.borrowedAt, borrowedUntil = event.borrowedUntil
+                    borrowedBy = event.userId, borrowedAt = event.borrowedAt, borrowedUntil = event.borrowedUntil, extendCount = 0
                 )
             }
 
