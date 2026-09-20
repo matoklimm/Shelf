@@ -10,6 +10,8 @@ import java.time.Instant
 import java.time.LocalDate
 import kotlin.uuid.Uuid
 
+data class BookCopyId(val id: Uuid)
+
 class BookCopy {
 
     lateinit var id: BookCopyId
