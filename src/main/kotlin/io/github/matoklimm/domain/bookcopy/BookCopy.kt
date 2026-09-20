@@ -55,7 +55,7 @@ class BookCopy {
                     "BookCopy(${id.id}) must be borrowed in order to be returned, but is currently in '${bookCopyStatus}' state"
                 }
 
-                listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = LocalDate.now()))
+                listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = Instant.now()))
             }
         }
     }
@@ -86,6 +86,10 @@ class BookCopy {
             }
 
             is BookCopyReturnedEvent -> {
+                check(bookCopyStatus == BookCopyStatus.BORROWED) {
+                    "BookCopy(${id.id}) must be in state '${BookCopyStatus.BORROWED}' to be returned, but is in $bookCopyStatus"
+                }
+
                 bookCopyStatus = BookCopyStatus.AVAILABLE
                 bookCopyLoan = null
             }

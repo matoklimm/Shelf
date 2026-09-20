@@ -9,6 +9,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import java.time.Instant
 import kotlin.uuid.Uuid
 
 
@@ -43,7 +44,7 @@ class BookCopyReturnTest : StringSpec({
         event.bookCopyId shouldBe bookCopyId
     }
 
-    "a book copy must be borrowed in order to be returned" {
+    "a book copy must be borrowed in order to be succeed the return command" {
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
@@ -85,6 +86,31 @@ class BookCopyReturnTest : StringSpec({
         )
 
         events.forEach(bookCopy::apply)
+        bookCopy.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
+        bookCopy.bookCopyLoan shouldBe null
+    }
+
+
+    "returning a book copy event, requires the book copy to be borrowed" {
+        val bookCopyId = BookCopyId(Uuid.random())
+        val bookCopy = BookCopy()
+
+        bookCopy.apply(
+            BookCopyAddedEvent(
+                bookCopyId = bookCopyId,
+                isbn = "978-1-4088-5565-2"
+            )
+        )
+
+        shouldThrow<IllegalStateException> {
+            bookCopy.apply(
+                BookCopyReturnedEvent(
+                    bookCopyId = bookCopyId,
+                    returnedAt = Instant.now()
+                )
+            )
+        }
+
         bookCopy.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
         bookCopy.bookCopyLoan shouldBe null
     }
