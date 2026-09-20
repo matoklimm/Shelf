@@ -6,6 +6,8 @@ import io.github.matoklimm.domain.bookcopy.commands.BorrowBookCopyCommand
 import io.github.matoklimm.domain.bookcopy.events.BookCopyAdded
 import io.github.matoklimm.domain.bookcopy.events.BookCopyBorrowedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyEvent
+import java.time.Instant
+import java.time.LocalDate
 import kotlin.uuid.Uuid
 
 class BookCopy {
@@ -19,6 +21,9 @@ class BookCopy {
     lateinit var bookCopyStatus: BookCopyStatus
         private set
 
+    var bookCopyLoan: BookCopyLoan? = null
+        private set
+
     fun handle(command: BookCopyCommand): List<BookCopyEvent> {
         return when (command) {
             is AddBookCopyCommand -> listOf(BookCopyAdded(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
@@ -26,7 +31,15 @@ class BookCopy {
                 check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
                     "BookCopy is not in state '${BookCopyStatus.AVAILABLE}' but rather in $bookCopyStatus"
                 }
-                listOf(BookCopyBorrowedEvent(bookCopyId = command.bookCopyId, userId = command.userId))
+                val borrowedUntil = command.borrowedUntil ?: LocalDate.now().plusDays(14)
+                listOf(
+                    BookCopyBorrowedEvent(
+                        bookCopyId = command.bookCopyId,
+                        userId = command.userId,
+                        borrowedAt = Instant.now(),
+                        borrowedUntil = borrowedUntil
+                    )
+                )
             }
         }
     }
@@ -42,12 +55,18 @@ class BookCopy {
                 isbn = event.isbn
                 bookCopyStatus = BookCopyStatus.AVAILABLE
             }
+
             is BookCopyBorrowedEvent -> {
                 check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
                     "BookCopy must be in state '${BookCopyStatus.AVAILABLE}' to be borrowed, but is in $bookCopyStatus"
                 }
 
                 bookCopyStatus = BookCopyStatus.BORROWED
+                bookCopyLoan = BookCopyLoan(
+                    borrowedBy = event.userId,
+                    borrowedAt = event.borrowedAt,
+                    borrowedUntil = event.borrowedUntil
+                )
             }
         }
     }
