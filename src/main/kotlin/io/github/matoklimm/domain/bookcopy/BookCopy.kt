@@ -54,7 +54,7 @@ class BookCopy {
                 listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = Instant.now()))
             }
 
-            is ReportDamageBookCopyCommand -> {
+            is ReportBookCopyDamageCommand -> {
                 checkStatus(BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
 
                 listOf(BookCopyDamagedEvent(bookCopyId = command.bookCopyId, description = command.description))

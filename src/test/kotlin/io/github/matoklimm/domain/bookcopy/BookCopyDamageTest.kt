@@ -1,7 +1,7 @@
 package io.github.matoklimm.domain.bookcopy
 
 import io.github.matoklimm.domain.bookcopy.commands.BorrowBookCopyCommand
-import io.github.matoklimm.domain.bookcopy.commands.ReportDamageBookCopyCommand
+import io.github.matoklimm.domain.bookcopy.commands.ReportBookCopyDamageCommand
 import io.github.matoklimm.domain.bookcopy.events.BookCopyAddedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyDamagedEvent
 import io.kotest.assertions.throwables.shouldThrow
@@ -22,7 +22,7 @@ class BookCopyDamageTest : StringSpec({
             )
         )
 
-        val command = ReportDamageBookCopyCommand(
+        val command = ReportBookCopyDamageCommand(
             bookCopyId = bookCopyId, description = "Cover is scratched"
         )
 
@@ -53,7 +53,7 @@ class BookCopyDamageTest : StringSpec({
         ).forEach(bookCopy::apply)
 
         val events = bookCopy.handle(
-            ReportDamageBookCopyCommand(
+            ReportBookCopyDamageCommand(
                 bookCopyId = bookCopyId, description = "Several pages are torn"
             )
         )
@@ -77,7 +77,7 @@ class BookCopyDamageTest : StringSpec({
         )
 
         val events = bookCopy.handle(
-            ReportDamageBookCopyCommand(
+            ReportBookCopyDamageCommand(
                 bookCopyId = bookCopyId, description = "Cover is damaged"
             )
         )
@@ -99,14 +99,14 @@ class BookCopyDamageTest : StringSpec({
         )
 
         bookCopy.handle(
-            ReportDamageBookCopyCommand(
+            ReportBookCopyDamageCommand(
                 bookCopyId = bookCopyId, description = "First damage"
             )
         ).forEach(bookCopy::apply)
 
         shouldThrow<IllegalStateException> {
             bookCopy.handle(
-                ReportDamageBookCopyCommand(
+                ReportBookCopyDamageCommand(
                     bookCopyId = bookCopyId, description = "Second damage"
                 )
             )
