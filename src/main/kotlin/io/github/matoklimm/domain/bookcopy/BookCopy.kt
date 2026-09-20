@@ -26,9 +26,6 @@ class BookCopy {
     var bookCopyLoan: BookCopyLoan? = null
         private set
 
-    var damageDescription: String? = null
-        private set
-
     fun handle(command: BookCopyCommand): List<BookCopyEvent> {
         return when (command) {
             is AddBookCopyCommand -> listOf(BookCopyAddedEvent(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))

@@ -85,7 +85,7 @@ class BookCopyDamageTest : StringSpec({
         events.forEach(bookCopy::apply)
 
         bookCopy.bookCopyStatus shouldBe BookCopyStatus.DAMAGED
-        bookCopy.damageDescription shouldBe "Cover is damaged"
+        events.filterIsInstance<BookCopyDamagedEvent>().single().description shouldBe "Cover is damaged"
     }
 
     "damage cannot be reported for an already damaged book copy" {
@@ -138,6 +138,5 @@ class BookCopyDamageTest : StringSpec({
         }
 
         bookCopy.bookCopyStatus shouldBe BookCopyStatus.DAMAGED
-        bookCopy.damageDescription shouldBe "Cover is damaged"
     }
 })
