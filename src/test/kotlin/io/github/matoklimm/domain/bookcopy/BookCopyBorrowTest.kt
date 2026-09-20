@@ -1,7 +1,7 @@
 package io.github.matoklimm.domain.bookcopy
 
 import io.github.matoklimm.domain.bookcopy.commands.BorrowBookCopyCommand
-import io.github.matoklimm.domain.bookcopy.events.BookCopyAdded
+import io.github.matoklimm.domain.bookcopy.events.BookCopyAddedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyBorrowedEvent
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
@@ -17,7 +17,7 @@ class BookCopyBorrowTest : StringSpec({
         val bookCopy = BookCopy()
 
         bookCopy.apply(
-            BookCopyAdded(
+            BookCopyAddedEvent(
                 bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
             )
         )
@@ -42,7 +42,7 @@ class BookCopyBorrowTest : StringSpec({
         val bookCopy = BookCopy()
 
         bookCopy.apply(
-            BookCopyAdded(
+            BookCopyAddedEvent(
                 bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
             )
         )
@@ -66,7 +66,7 @@ class BookCopyBorrowTest : StringSpec({
             val bookCopy = BookCopy()
 
             bookCopy.apply(
-                BookCopyAdded(
+                BookCopyAddedEvent(
                     bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
                 )
             )
@@ -87,7 +87,7 @@ class BookCopyBorrowTest : StringSpec({
             val bookCopy = BookCopy()
 
             bookCopy.apply(
-                BookCopyAdded(
+                BookCopyAddedEvent(
                     bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
                 )
             )
@@ -111,7 +111,7 @@ class BookCopyBorrowTest : StringSpec({
             val bookCopy = BookCopy()
 
             bookCopy.apply(
-                BookCopyAdded(
+                BookCopyAddedEvent(
                     bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
                 )
             )
@@ -132,7 +132,7 @@ class BookCopyBorrowTest : StringSpec({
             val bookCopy = BookCopy()
 
             bookCopy.apply(
-                BookCopyAdded(
+                BookCopyAddedEvent(
                     bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
                 )
             )

@@ -3,7 +3,7 @@ package io.github.matoklimm.domain.bookcopy
 import io.github.matoklimm.domain.bookcopy.commands.AddBookCopyCommand
 import io.github.matoklimm.domain.bookcopy.commands.BookCopyCommand
 import io.github.matoklimm.domain.bookcopy.commands.BorrowBookCopyCommand
-import io.github.matoklimm.domain.bookcopy.events.BookCopyAdded
+import io.github.matoklimm.domain.bookcopy.events.BookCopyAddedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyBorrowedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyEvent
 import java.time.Instant
@@ -26,7 +26,7 @@ class BookCopy {
 
     fun handle(command: BookCopyCommand): List<BookCopyEvent> {
         return when (command) {
-            is AddBookCopyCommand -> listOf(BookCopyAdded(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
+            is AddBookCopyCommand -> listOf(BookCopyAddedEvent(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
             is BorrowBookCopyCommand -> {
                 check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
                     "BookCopy is not in state '${BookCopyStatus.AVAILABLE}' but rather in $bookCopyStatus"
@@ -51,7 +51,7 @@ class BookCopy {
 
     fun apply(event: BookCopyEvent) {
         when (event) {
-            is BookCopyAdded -> {
+            is BookCopyAddedEvent -> {
                 check(!::id.isInitialized) {
                     "BookCopy has already been added, calling ${event.bookCopyId} on initialized BookCopy(${id.id})"
                 }

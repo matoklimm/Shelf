@@ -1,7 +1,7 @@
 package io.github.matoklimm.domain.bookcopy
 
 import io.github.matoklimm.domain.bookcopy.commands.AddBookCopyCommand
-import io.github.matoklimm.domain.bookcopy.events.BookCopyAdded
+import io.github.matoklimm.domain.bookcopy.events.BookCopyAddedEvent
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -22,7 +22,7 @@ class BookCopyTest : StringSpec({
         // Then
         events shouldBe listOf(events.single())
 
-        val event = events.single().shouldBeTypeOf<BookCopyAdded>()
+        val event = events.single().shouldBeTypeOf<BookCopyAddedEvent>()
         event.isbn shouldBe command.isbn
     }
 
@@ -35,12 +35,12 @@ class BookCopyTest : StringSpec({
         val copy1Added = BookCopy()
             .handle(addCopy1)
             .single()
-            .shouldBeTypeOf<BookCopyAdded>()
+            .shouldBeTypeOf<BookCopyAddedEvent>()
 
         val copy2Added = BookCopy()
             .handle(addCopy2)
             .single()
-            .shouldBeTypeOf<BookCopyAdded>()
+            .shouldBeTypeOf<BookCopyAddedEvent>()
 
         // Then
         copy1Added.isbn shouldBe addCopy1.isbn
@@ -52,26 +52,26 @@ class BookCopyTest : StringSpec({
     "BookCopyAdded event is processed" {
         // Given
         val bookCopyId = BookCopyId(Uuid.random())
-        val bookCopyAdded = BookCopyAdded(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2")
+        val bookCopyAddedEvent = BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2")
         val aggregate = BookCopy()
 
         // When
-        aggregate.apply(bookCopyAdded)
+        aggregate.apply(bookCopyAddedEvent)
 
         // Then
-        aggregate.isbn shouldBe bookCopyAdded.isbn
+        aggregate.isbn shouldBe bookCopyAddedEvent.isbn
         aggregate.id shouldBe bookCopyId
         aggregate.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
     }
 
     "BookCopyAdded cannot be processed twice" {
         // Given
-        val firstEvent = BookCopyAdded(
+        val firstEvent = BookCopyAddedEvent(
             bookCopyId = BookCopyId(Uuid.random()),
             isbn = "978-1-4088-5565-2"
         )
 
-        val secondEvent = BookCopyAdded(
+        val secondEvent = BookCopyAddedEvent(
             bookCopyId = BookCopyId(Uuid.random()),
             isbn = "978-1-4088-5566-9"
         )
