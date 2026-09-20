@@ -77,6 +77,21 @@ class BookCopy {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.DAMAGED)
                 listOf(BookCopyRetiredEvent(bookCopyId = command.bookCopyId, retiredAt = Instant.now()))
             }
+
+            is ExtendBookCopyLoanCommand -> {
+                checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.BORROWED)
+                val loan = checkNotNull(bookCopyLoan) {
+                    "BookCopy(${id.id}) cannot be extended without an active loan"
+                }
+                check(loan.borrowedBy == command.userId) {
+                    "BookCopy(${id.id}) is borrowed by User(${loan.borrowedBy}) and therefore must not be extended by ${command.userId}"
+                }
+                check(loan.extendCount < 2) {
+                    "BookCopy(${id.id}) maximum number of loan extends has been reached."
+                }
+
+                listOf(BookCopyLoanExtendedEvent(bookCopyId = command.bookCopyId, extendedUntil = loan.borrowedUntil.plusDays(14)))
+            }
         }
     }
 
@@ -131,6 +146,15 @@ class BookCopy {
             is BookCopyRetiredEvent -> {
                 checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.DAMAGED)
                 bookCopyStatus = BookCopyStatus.RETIRED
+            }
+
+            is BookCopyLoanExtendedEvent -> {
+                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.BORROWED)
+                val loan = checkNotNull(bookCopyLoan) {
+                    "BookCopy(${id.id}) cannot be extended without an active loan"
+                }
+                loan.extendCount += 1
+                loan.borrowedUntil = event.extendedUntil
             }
         }
     }

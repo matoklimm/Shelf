@@ -6,6 +6,6 @@ import java.time.LocalDate
 data class BookCopyLoan(
     val borrowedBy: String,
     val borrowedAt: Instant,
-    val borrowedUntil: LocalDate,
-    val extendCount: Int,
+    var borrowedUntil: LocalDate,
+    var extendCount: Int,
 )
