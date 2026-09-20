@@ -1,11 +1,9 @@
 package io.github.matoklimm.domain.bookcopy
 
-import io.github.matoklimm.domain.bookcopy.commands.AddBookCopyCommand
-import io.github.matoklimm.domain.bookcopy.commands.BookCopyCommand
-import io.github.matoklimm.domain.bookcopy.commands.BorrowBookCopyCommand
-import io.github.matoklimm.domain.bookcopy.commands.ReturnBookCopyCommand
+import io.github.matoklimm.domain.bookcopy.commands.*
 import io.github.matoklimm.domain.bookcopy.events.BookCopyAddedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyBorrowedEvent
+import io.github.matoklimm.domain.bookcopy.events.BookCopyDamagedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyReturnedEvent
 import java.time.Instant
@@ -26,6 +24,9 @@ class BookCopy {
     var bookCopyLoan: BookCopyLoan? = null
         private set
 
+    var damageDescription: String? = null
+        private set
+
     fun handle(command: BookCopyCommand): List<BookCopyEvent> {
         return when (command) {
             is AddBookCopyCommand -> listOf(BookCopyAddedEvent(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
@@ -42,10 +43,7 @@ class BookCopy {
 
                 listOf(
                     BookCopyBorrowedEvent(
-                        bookCopyId = command.bookCopyId,
-                        userId = command.userId,
-                        borrowedAt = Instant.now(),
-                        borrowedUntil = borrowedUntil
+                        bookCopyId = command.bookCopyId, userId = command.userId, borrowedAt = Instant.now(), borrowedUntil = borrowedUntil
                     )
                 )
             }
@@ -56,6 +54,15 @@ class BookCopy {
                 }
 
                 listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = Instant.now()))
+            }
+
+            is ReportDamageBookCopyCommand -> {
+                val canReportDamage = bookCopyStatus == BookCopyStatus.AVAILABLE || bookCopyStatus == BookCopyStatus.BORROWED
+                check(canReportDamage) {
+                    "BookCopy(${id.id}) must be either available or borrowed to report a damage, but is currently in '${bookCopyStatus}' state"
+                }
+
+                listOf(BookCopyDamagedEvent(bookCopyId = command.bookCopyId, description = command.description))
             }
         }
     }
@@ -79,9 +86,7 @@ class BookCopy {
 
                 bookCopyStatus = BookCopyStatus.BORROWED
                 bookCopyLoan = BookCopyLoan(
-                    borrowedBy = event.userId,
-                    borrowedAt = event.borrowedAt,
-                    borrowedUntil = event.borrowedUntil
+                    borrowedBy = event.userId, borrowedAt = event.borrowedAt, borrowedUntil = event.borrowedUntil
                 )
             }
 
@@ -92,6 +97,16 @@ class BookCopy {
 
                 bookCopyStatus = BookCopyStatus.AVAILABLE
                 bookCopyLoan = null
+            }
+
+            is BookCopyDamagedEvent -> {
+                val canReportDamage = bookCopyStatus == BookCopyStatus.AVAILABLE || bookCopyStatus == BookCopyStatus.BORROWED
+                check(canReportDamage) {
+                    "BookCopy(${id.id}) must be either available or borrowed to report a damage, but is currently in '${bookCopyStatus}' state"
+                }
+
+                damageDescription = event.description
+                bookCopyStatus = BookCopyStatus.DAMAGED
             }
         }
     }
