@@ -72,6 +72,11 @@ class BookCopy {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.LOST)
                 listOf(BookCopyFoundEvent(bookCopyId = command.bookCopyId, foundAt = Instant.now()))
             }
+
+            is RetireBookCopyCommand -> {
+                checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.DAMAGED)
+                listOf(BookCopyRetiredEvent(bookCopyId = command.bookCopyId, retiredAt = Instant.now()))
+            }
         }
     }
 
@@ -121,6 +126,11 @@ class BookCopy {
             is BookCopyFoundEvent -> {
                 checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.LOST)
                 bookCopyStatus = BookCopyStatus.AVAILABLE
+            }
+
+            is BookCopyRetiredEvent -> {
+                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.DAMAGED)
+                bookCopyStatus = BookCopyStatus.RETIRED
             }
         }
     }
