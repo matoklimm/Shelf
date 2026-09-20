@@ -2,7 +2,9 @@ package io.github.matoklimm.domain.bookcopy
 
 import io.github.matoklimm.domain.bookcopy.commands.AddBookCopyCommand
 import io.github.matoklimm.domain.bookcopy.commands.BookCopyCommand
+import io.github.matoklimm.domain.bookcopy.commands.BorrowBookCopyCommand
 import io.github.matoklimm.domain.bookcopy.events.BookCopyAdded
+import io.github.matoklimm.domain.bookcopy.events.BookCopyBorrowedEvent
 import io.github.matoklimm.domain.bookcopy.events.BookCopyEvent
 import kotlin.uuid.Uuid
 
@@ -19,7 +21,7 @@ class BookCopy {
 
     fun handle(command: BookCopyCommand): List<BookCopyEvent> {
         return when (command) {
-            is AddBookCopyCommand -> listOf(BookCopyAdded(id = BookCopyId(Uuid.random()), isbn = command.isbn))
+            is AddBookCopyCommand -> listOf(BookCopyAdded(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
         }
     }
 
@@ -27,10 +29,10 @@ class BookCopy {
         when (event) {
             is BookCopyAdded -> {
                 check(!::id.isInitialized) {
-                    "BookCopy has already been added, calling ${event.id} on initialized BookCopy(${id.id})"
+                    "BookCopy has already been added, calling ${event.bookCopyId} on initialized BookCopy(${id.id})"
                 }
 
-                id = event.id
+                id = event.bookCopyId
                 isbn = event.isbn
                 bookCopyStatus = BookCopyStatus.AVAILABLE
             }

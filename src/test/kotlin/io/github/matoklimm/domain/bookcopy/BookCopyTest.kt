@@ -46,13 +46,13 @@ class BookCopyTest : StringSpec({
         copy1Added.isbn shouldBe addCopy1.isbn
         copy2Added.isbn shouldBe addCopy2.isbn
         copy1Added.isbn shouldBe copy2Added.isbn
-        copy1Added.id shouldNotBe copy2Added.id
+        copy1Added.bookCopyId shouldNotBe copy2Added.bookCopyId
     }
 
     "BookCopyAdded event is processed" {
         // Given
         val bookCopyId = BookCopyId(Uuid.random())
-        val bookCopyAdded = BookCopyAdded(id = bookCopyId, isbn = "978-1-4088-5565-2")
+        val bookCopyAdded = BookCopyAdded(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2")
         val aggregate = BookCopy()
 
         // When
@@ -67,12 +67,12 @@ class BookCopyTest : StringSpec({
     "BookCopyAdded cannot be processed twice" {
         // Given
         val firstEvent = BookCopyAdded(
-            id = BookCopyId(Uuid.random()),
+            bookCopyId = BookCopyId(Uuid.random()),
             isbn = "978-1-4088-5565-2"
         )
 
         val secondEvent = BookCopyAdded(
-            id = BookCopyId(Uuid.random()),
+            bookCopyId = BookCopyId(Uuid.random()),
             isbn = "978-1-4088-5566-9"
         )
 
@@ -85,7 +85,7 @@ class BookCopyTest : StringSpec({
         }
 
         // Finally
-        aggregate.id shouldBe firstEvent.id
+        aggregate.id shouldBe firstEvent.bookCopyId
         aggregate.isbn shouldBe firstEvent.isbn
         aggregate.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
     }
