@@ -60,97 +60,97 @@ class BookCopyBorrowTest : StringSpec({
                 )
             )
         }
+    }
 
-        "borrow defaults to 14 days when no return date is provided" {
-            val bookCopyId = BookCopyId(Uuid.random())
-            val bookCopy = BookCopy()
+    "borrow defaults to 14 days when no return date is provided" {
+        val bookCopyId = BookCopyId(Uuid.random())
+        val bookCopy = BookCopy()
 
-            bookCopy.apply(
-                BookCopyAddedEvent(
-                    bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-                )
+        bookCopy.apply(
+            BookCopyAddedEvent(
+                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
             )
+        )
 
-            val command = BorrowBookCopyCommand(
-                bookCopyId = bookCopyId, userId = "user-123"
+        val command = BorrowBookCopyCommand(
+            bookCopyId = bookCopyId, userId = "user-123"
+        )
+
+        val events = bookCopy.handle(command)
+
+        val event = events.single() as BookCopyBorrowedEvent
+
+        event.borrowedUntil shouldBe LocalDate.now().plusDays(14)
+    }
+
+    "borrowing for exactly 30 days is allowed" {
+        val bookCopyId = BookCopyId(Uuid.random())
+        val bookCopy = BookCopy()
+
+        bookCopy.apply(
+            BookCopyAddedEvent(
+                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
             )
+        )
 
-            val events = bookCopy.handle(command)
+        val borrowedUntil = LocalDate.now().plusDays(30)
 
-            val event = events.single() as BookCopyBorrowedEvent
-
-            event.borrowedUntil shouldBe LocalDate.now().plusDays(14)
-        }
-
-        "borrowing for exactly 30 days is allowed" {
-            val bookCopyId = BookCopyId(Uuid.random())
-            val bookCopy = BookCopy()
-
-            bookCopy.apply(
-                BookCopyAddedEvent(
-                    bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-                )
+        val events = bookCopy.handle(
+            BorrowBookCopyCommand(
+                bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil
             )
+        )
 
-            val borrowedUntil = LocalDate.now().plusDays(30)
+        events shouldHaveSize 1
+        val event = events.single() as BookCopyBorrowedEvent
 
-            val events = bookCopy.handle(
+        event.borrowedUntil shouldBe borrowedUntil
+    }
+
+    "borrowing for more than 30 days is rejected" {
+        val bookCopyId = BookCopyId(Uuid.random())
+        val bookCopy = BookCopy()
+
+        bookCopy.apply(
+            BookCopyAddedEvent(
+                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
+            )
+        )
+
+        val borrowedUntil = LocalDate.now().plusDays(31)
+
+        shouldThrow<IllegalStateException> {
+            bookCopy.handle(
                 BorrowBookCopyCommand(
                     bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil
                 )
             )
-
-            events shouldHaveSize 1
-            val event = events.single() as BookCopyBorrowedEvent
-
-            event.borrowedUntil shouldBe borrowedUntil
         }
+    }
 
-        "borrowing for more than 30 days is rejected" {
-            val bookCopyId = BookCopyId(Uuid.random())
-            val bookCopy = BookCopy()
+    "borrowing a book copy applies the borrowed event" {
+        val bookCopyId = BookCopyId(Uuid.random())
+        val bookCopy = BookCopy()
 
-            bookCopy.apply(
-                BookCopyAddedEvent(
-                    bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-                )
+        bookCopy.apply(
+            BookCopyAddedEvent(
+                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
             )
+        )
 
-            val borrowedUntil = LocalDate.now().plusDays(31)
+        val borrowedUntil = LocalDate.now().plusDays(10)
 
-            shouldThrow<IllegalStateException> {
-                bookCopy.handle(
-                    BorrowBookCopyCommand(
-                        bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil
-                    )
-                )
-            }
-        }
-
-        "borrowing a book copy applies the borrowed event" {
-            val bookCopyId = BookCopyId(Uuid.random())
-            val bookCopy = BookCopy()
-
-            bookCopy.apply(
-                BookCopyAddedEvent(
-                    bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-                )
+        val events = bookCopy.handle(
+            BorrowBookCopyCommand(
+                bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil
             )
+        )
 
-            val borrowedUntil = LocalDate.now().plusDays(10)
+        events.forEach(bookCopy::apply)
 
-            val events = bookCopy.handle(
-                BorrowBookCopyCommand(
-                    bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil
-                )
-            )
-
-            events.forEach(bookCopy::apply)
-
-            bookCopy.bookCopyStatus shouldBe BookCopyStatus.BORROWED
-            bookCopy.bookCopyLoan!!.borrowedBy shouldBe "user-123"
-            bookCopy.bookCopyLoan!!.borrowedUntil shouldBe borrowedUntil
-        }
+        bookCopy.bookCopyStatus shouldBe BookCopyStatus.BORROWED
+        bookCopy.bookCopyLoan!!.borrowedBy shouldBe "user-123"
+        bookCopy.bookCopyLoan!!.borrowedUntil shouldBe borrowedUntil
     }
 })
 
