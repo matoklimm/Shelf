@@ -32,9 +32,7 @@ class BookCopy {
             is AddBookCopyCommand -> listOf(BookCopyAddedEvent(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
 
             is BorrowBookCopyCommand -> {
-                check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
-                    "BookCopy(${id.id}) is not in state '${BookCopyStatus.AVAILABLE}' but rather in $bookCopyStatus"
-                }
+                checkStatus(BookCopyStatus.AVAILABLE)
 
                 val borrowedUntil = command.borrowedUntil ?: LocalDate.now().plusDays(14)
                 check(borrowedUntil < LocalDate.now().plusDays(31)) {
@@ -49,18 +47,13 @@ class BookCopy {
             }
 
             is ReturnBookCopyCommand -> {
-                check(bookCopyStatus == BookCopyStatus.BORROWED) {
-                    "BookCopy(${id.id}) must be borrowed in order to be returned, but is currently in '${bookCopyStatus}' state"
-                }
+                checkStatus( BookCopyStatus.BORROWED)
 
                 listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = Instant.now()))
             }
 
             is ReportDamageBookCopyCommand -> {
-                val canReportDamage = bookCopyStatus == BookCopyStatus.AVAILABLE || bookCopyStatus == BookCopyStatus.BORROWED
-                check(canReportDamage) {
-                    "BookCopy(${id.id}) must be either available or borrowed to report a damage, but is currently in '${bookCopyStatus}' state"
-                }
+                checkStatus(BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
 
                 listOf(BookCopyDamagedEvent(bookCopyId = command.bookCopyId, description = command.description))
             }
@@ -80,9 +73,7 @@ class BookCopy {
             }
 
             is BookCopyBorrowedEvent -> {
-                check(bookCopyStatus == BookCopyStatus.AVAILABLE) {
-                    "BookCopy(${id.id}) must be in state '${BookCopyStatus.AVAILABLE}' to be borrowed, but is in $bookCopyStatus"
-                }
+                checkStatus(BookCopyStatus.AVAILABLE)
 
                 bookCopyStatus = BookCopyStatus.BORROWED
                 bookCopyLoan = BookCopyLoan(
@@ -91,23 +82,25 @@ class BookCopy {
             }
 
             is BookCopyReturnedEvent -> {
-                check(bookCopyStatus == BookCopyStatus.BORROWED) {
-                    "BookCopy(${id.id}) must be in state '${BookCopyStatus.BORROWED}' to be returned, but is in $bookCopyStatus"
-                }
+                checkStatus(BookCopyStatus.BORROWED)
 
                 bookCopyStatus = BookCopyStatus.AVAILABLE
                 bookCopyLoan = null
             }
 
             is BookCopyDamagedEvent -> {
-                val canReportDamage = bookCopyStatus == BookCopyStatus.AVAILABLE || bookCopyStatus == BookCopyStatus.BORROWED
-                check(canReportDamage) {
-                    "BookCopy(${id.id}) must be either available or borrowed to report a damage, but is currently in '${bookCopyStatus}' state"
-                }
+                checkStatus(BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
 
                 damageDescription = event.description
                 bookCopyStatus = BookCopyStatus.DAMAGED
             }
         }
     }
+
+    private fun checkStatus(vararg allowed: BookCopyStatus) {
+        check(bookCopyStatus in allowed) {
+            "BookCopy(${id.id}) must be in one of states ${allowed.toList()} but is in '$bookCopyStatus'"
+        }
+    }
+
 }
