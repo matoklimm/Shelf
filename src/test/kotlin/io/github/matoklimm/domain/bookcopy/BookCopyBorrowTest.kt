@@ -11,26 +11,20 @@ import java.time.LocalDate
 import kotlin.uuid.Uuid
 
 class BookCopyBorrowTest : StringSpec({
-
     "an available book copy can be borrowed" {
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
         val command = BorrowBookCopyCommand(
             bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = LocalDate.now().plusDays(10)
         )
 
-        val events = bookCopy.handle(command)
+        bookCopy.handle(command)
 
-        events shouldHaveSize 1
-
-        val event = events.single() as BookCopyBorrowedEvent
+        bookCopy.pendingEvents shouldHaveSize 1
+        val event = bookCopy.pendingEvents.single() as BookCopyBorrowedEvent
 
         event.bookCopyId shouldBe bookCopyId
         event.userId shouldBe "user-123"
@@ -41,24 +35,12 @@ class BookCopyBorrowTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
-        val firstBorrow = BorrowBookCopyCommand(
-            bookCopyId = bookCopyId, userId = "user-123"
-        )
-
-        bookCopy.handle(firstBorrow).forEach(bookCopy::apply)
+        bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-123"))
 
         shouldThrow<IllegalStateException> {
-            bookCopy.handle(
-                BorrowBookCopyCommand(
-                    bookCopyId = bookCopyId, userId = "user-456"
-                )
-            )
+            bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-456"))
         }
     }
 
@@ -66,20 +48,11 @@ class BookCopyBorrowTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
-        val command = BorrowBookCopyCommand(
-            bookCopyId = bookCopyId, userId = "user-123"
-        )
+        bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-123"))
 
-        val events = bookCopy.handle(command)
-
-        val event = events.single() as BookCopyBorrowedEvent
-
+        val event = bookCopy.pendingEvents.single() as BookCopyBorrowedEvent
         event.borrowedUntil shouldBe LocalDate.now().plusDays(14)
     }
 
@@ -87,23 +60,14 @@ class BookCopyBorrowTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
         val borrowedUntil = LocalDate.now().plusDays(30)
 
-        val events = bookCopy.handle(
-            BorrowBookCopyCommand(
-                bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil
-            )
-        )
+        bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil))
 
-        events shouldHaveSize 1
-        val event = events.single() as BookCopyBorrowedEvent
-
+        bookCopy.pendingEvents shouldHaveSize 1
+        val event = bookCopy.pendingEvents.single() as BookCopyBorrowedEvent
         event.borrowedUntil shouldBe borrowedUntil
     }
 
@@ -111,20 +75,12 @@ class BookCopyBorrowTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
         val borrowedUntil = LocalDate.now().plusDays(31)
 
         shouldThrow<IllegalStateException> {
-            bookCopy.handle(
-                BorrowBookCopyCommand(
-                    bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil
-                )
-            )
+            bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil))
         }
     }
 
@@ -132,21 +88,11 @@ class BookCopyBorrowTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
         val borrowedUntil = LocalDate.now().plusDays(10)
 
-        val events = bookCopy.handle(
-            BorrowBookCopyCommand(
-                bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil
-            )
-        )
-
-        events.forEach(bookCopy::apply)
+        bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-123", borrowedUntil = borrowedUntil))
 
         bookCopy.bookCopyStatus shouldBe BookCopyStatus.BORROWED
         bookCopy.bookCopyLoan!!.borrowedBy shouldBe "user-123"

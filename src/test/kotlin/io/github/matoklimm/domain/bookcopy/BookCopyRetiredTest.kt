@@ -13,24 +13,18 @@ import java.time.Instant
 import kotlin.uuid.Uuid
 
 class BookCopyRetireTest : StringSpec({
-
     "an available book copy can be retired" {
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
         val command = RetireBookCopyCommand(bookCopyId = bookCopyId)
 
-        val events = bookCopy.handle(command)
+        bookCopy.handle(command)
 
-        events shouldHaveSize 1
-        val event = events.single().shouldBeTypeOf<BookCopyRetiredEvent>()
+        bookCopy.pendingEvents shouldHaveSize 1
+        val event = bookCopy.pendingEvents.single().shouldBeTypeOf<BookCopyRetiredEvent>()
         event.bookCopyId shouldBe bookCopyId
     }
 
@@ -38,25 +32,15 @@ class BookCopyRetireTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        bookCopy.apply(
-            BookCopyDamagedEvent(
-                bookCopyId = bookCopyId,
-                description = "Damaged cover"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(BookCopyDamagedEvent(bookCopyId = bookCopyId, description = "Damaged cover"))
 
         val command = RetireBookCopyCommand(bookCopyId = bookCopyId)
 
-        val events = bookCopy.handle(command)
+        bookCopy.handle(command)
 
-        events shouldHaveSize 1
-        val event = events.single().shouldBeTypeOf<BookCopyRetiredEvent>()
+        bookCopy.pendingEvents shouldHaveSize 1
+        val event = bookCopy.pendingEvents.single().shouldBeTypeOf<BookCopyRetiredEvent>()
         event.bookCopyId shouldBe bookCopyId
     }
 
@@ -64,23 +48,11 @@ class BookCopyRetireTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        bookCopy.apply(
-            BookCopyRetiredEvent(
-                bookCopyId = bookCopyId,
-                retiredAt = Instant.now()
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(BookCopyRetiredEvent(bookCopyId = bookCopyId, retiredAt = Instant.now()))
 
         shouldThrow<IllegalStateException> {
-            bookCopy.handle(
-                RetireBookCopyCommand(bookCopyId = bookCopyId)
-            )
+            bookCopy.handle(RetireBookCopyCommand(bookCopyId = bookCopyId))
         }
     }
 
@@ -88,21 +60,9 @@ class BookCopyRetireTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-
-        bookCopy.apply(
-            BookCopyRetiredEvent(
-                bookCopyId = bookCopyId,
-                retiredAt = Instant.now()
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(BookCopyRetiredEvent(bookCopyId = bookCopyId, retiredAt = Instant.now()))
 
         bookCopy.bookCopyStatus shouldBe BookCopyStatus.RETIRED
     }
-
 })

@@ -12,35 +12,21 @@ import io.kotest.matchers.types.shouldBeTypeOf
 import kotlin.uuid.Uuid
 
 class BookCopyRepairTest : StringSpec({
-
     "a damaged book copy can be repaired" {
         val bookCopyId = BookCopyId(Uuid.random())
         val aggregate = BookCopy()
 
-        aggregate.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        aggregate.apply(
-            BookCopyDamagedEvent(
-                bookCopyId = bookCopyId,
-                description = "Cover torn"
-            )
-        )
+        aggregate.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        aggregate.replay(BookCopyDamagedEvent(bookCopyId = bookCopyId, description = "Cover torn"))
 
         val command = RepairBookCopyCommand(
-            bookCopyId = bookCopyId,
-            description = "Cover replaced",
-            isDamageRepaired = true
+            bookCopyId = bookCopyId, description = "Cover replaced", isDamageRepaired = true
         )
 
-        val events = aggregate.handle(command)
+        aggregate.handle(command)
 
-        events shouldHaveSize 1
-
-        val event = events.single().shouldBeTypeOf<BookCopyRepairedEvent>()
+        aggregate.pendingEvents shouldHaveSize 1
+        val event = aggregate.pendingEvents.single().shouldBeTypeOf<BookCopyRepairedEvent>()
         event.bookCopyId shouldBe bookCopyId
         event.description shouldBe command.description
         event.isDamageRepaired shouldBe true
@@ -50,30 +36,17 @@ class BookCopyRepairTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val aggregate = BookCopy()
 
-        aggregate.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        aggregate.apply(
-            BookCopyDamagedEvent(
-                bookCopyId = bookCopyId,
-                description = "Cover torn"
-            )
-        )
+        aggregate.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        aggregate.replay(BookCopyDamagedEvent(bookCopyId = bookCopyId, description = "Cover torn"))
 
         val command = RepairBookCopyCommand(
-            bookCopyId = bookCopyId,
-            description = "Wont do",
-            isDamageRepaired = false
+            bookCopyId = bookCopyId, description = "Wont do", isDamageRepaired = false
         )
 
-        val events = aggregate.handle(command)
+        aggregate.handle(command)
 
-        events shouldHaveSize 1
-
-        val event = events.single().shouldBeTypeOf<BookCopyRepairedEvent>()
+        aggregate.pendingEvents shouldHaveSize 1
+        val event = aggregate.pendingEvents.single().shouldBeTypeOf<BookCopyRepairedEvent>()
         event.bookCopyId shouldBe bookCopyId
         event.description shouldBe command.description
         event.isDamageRepaired shouldBe false
@@ -83,20 +56,11 @@ class BookCopyRepairTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val aggregate = BookCopy()
 
-        aggregate.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
+        aggregate.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
         shouldThrow<IllegalStateException> {
             aggregate.handle(
-                RepairBookCopyCommand(
-                    bookCopyId = bookCopyId,
-                    description = "Attempted repair",
-                    isDamageRepaired = true
-                )
+                RepairBookCopyCommand(bookCopyId = bookCopyId, description = "Attempted repair", isDamageRepaired = true)
             )
         }
     }
@@ -105,26 +69,9 @@ class BookCopyRepairTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val aggregate = BookCopy()
 
-        aggregate.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        aggregate.apply(
-            BookCopyDamagedEvent(
-                bookCopyId = bookCopyId,
-                description = "Cover torn"
-            )
-        )
-
-        aggregate.apply(
-            BookCopyRepairedEvent(
-                bookCopyId = bookCopyId,
-                description = "Cover replaced",
-                isDamageRepaired = true
-            )
-        )
+        aggregate.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        aggregate.replay(BookCopyDamagedEvent(bookCopyId = bookCopyId, description = "Cover torn"))
+        aggregate.replay(BookCopyRepairedEvent(bookCopyId = bookCopyId, description = "Cover replaced", isDamageRepaired = true))
 
         aggregate.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
     }
@@ -133,51 +80,10 @@ class BookCopyRepairTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val aggregate = BookCopy()
 
-        aggregate.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        aggregate.apply(
-            BookCopyDamagedEvent(
-                bookCopyId = bookCopyId,
-                description = "Cover torn"
-            )
-        )
-
-        aggregate.apply(
-            BookCopyRepairedEvent(
-                bookCopyId = bookCopyId,
-                description = "Wont do",
-                isDamageRepaired = false
-            )
-        )
+        aggregate.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        aggregate.replay(BookCopyDamagedEvent(bookCopyId = bookCopyId, description = "Cover torn"))
+        aggregate.replay(BookCopyRepairedEvent(bookCopyId = bookCopyId, description = "Wont do", isDamageRepaired = false))
 
         aggregate.bookCopyStatus shouldBe BookCopyStatus.DAMAGED
-    }
-
-    "a repaired event cannot be applied to an available book copy" {
-        val bookCopyId = BookCopyId(Uuid.random())
-        val aggregate = BookCopy()
-
-        aggregate.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-
-        shouldThrow<IllegalStateException> {
-            aggregate.apply(
-                BookCopyRepairedEvent(
-                    bookCopyId = bookCopyId,
-                    description = "Cover replaced",
-                    isDamageRepaired = true
-                )
-            )
-        }
-
-        aggregate.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
     }
 })

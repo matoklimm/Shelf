@@ -2,13 +2,14 @@ package io.github.matoklimm.domain.bookcopy
 
 import io.github.matoklimm.domain.bookcopy.commands.*
 import io.github.matoklimm.domain.bookcopy.events.*
+import io.github.matoklimm.domain.shared.AggregateRoot
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.uuid.Uuid
 
 data class BookCopyId(val id: Uuid)
 
-class BookCopy {
+class BookCopy : AggregateRoot<BookCopyEvent>() {
 
     lateinit var id: BookCopyId
         private set
@@ -22,9 +23,9 @@ class BookCopy {
     var bookCopyLoan: BookCopyLoan? = null
         private set
 
-    fun handle(command: BookCopyCommand): List<BookCopyEvent> {
-        return when (command) {
-            is AddBookCopyCommand -> listOf(BookCopyAddedEvent(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
+    fun handle(command: BookCopyCommand) {
+        when (command) {
+            is AddBookCopyCommand -> raise(BookCopyAddedEvent(bookCopyId = BookCopyId(Uuid.random()), isbn = command.isbn))
 
             is BorrowBookCopyCommand -> {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE)
@@ -34,9 +35,12 @@ class BookCopy {
                     "BookCopy(${id.id}) must be borrowed for 30 days or less. $borrowedUntil is exceeding that range"
                 }
 
-                listOf(
+                raise(
                     BookCopyBorrowedEvent(
-                        bookCopyId = command.bookCopyId, userId = command.userId, borrowedAt = Instant.now(), borrowedUntil = borrowedUntil
+                        bookCopyId = command.bookCopyId,
+                        userId = command.userId,
+                        borrowedAt = Instant.now(),
+                        borrowedUntil = borrowedUntil
                     )
                 )
             }
@@ -44,17 +48,17 @@ class BookCopy {
             is ReturnBookCopyCommand -> {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.BORROWED)
 
-                listOf(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = Instant.now()))
+                raise(BookCopyReturnedEvent(bookCopyId = command.bookCopyId, returnedAt = Instant.now()))
             }
 
             is ReportBookCopyDamageCommand -> {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
-                listOf(BookCopyDamagedEvent(bookCopyId = command.bookCopyId, description = command.description))
+                raise(BookCopyDamagedEvent(bookCopyId = command.bookCopyId, description = command.description))
             }
 
             is RepairBookCopyCommand -> {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.DAMAGED)
-                listOf(
+                raise(
                     BookCopyRepairedEvent(
                         bookCopyId = command.bookCopyId,
                         description = command.description,
@@ -65,17 +69,17 @@ class BookCopy {
 
             is MarkBookCopyAsLostCommand -> {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED, BookCopyStatus.DAMAGED)
-                listOf(BookCopyLostEvent(bookCopyId = command.bookCopyId, lostAt = Instant.now()))
+                raise(BookCopyLostEvent(bookCopyId = command.bookCopyId, lostAt = Instant.now()))
             }
 
             is MarkBookCopyAsFoundCommand -> {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.LOST)
-                listOf(BookCopyFoundEvent(bookCopyId = command.bookCopyId, foundAt = Instant.now()))
+                raise(BookCopyFoundEvent(bookCopyId = command.bookCopyId, foundAt = Instant.now()))
             }
 
             is RetireBookCopyCommand -> {
                 checkStatus(bookCopyId = command.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.DAMAGED)
-                listOf(BookCopyRetiredEvent(bookCopyId = command.bookCopyId, retiredAt = Instant.now()))
+                raise(BookCopyRetiredEvent(bookCopyId = command.bookCopyId, retiredAt = Instant.now()))
             }
 
             is ExtendBookCopyLoanCommand -> {
@@ -90,26 +94,20 @@ class BookCopy {
                     "BookCopy(${id.id}) maximum number of loan extends has been reached."
                 }
 
-                listOf(BookCopyLoanExtendedEvent(bookCopyId = command.bookCopyId, extendedUntil = loan.borrowedUntil.plusDays(14)))
+                raise(BookCopyLoanExtendedEvent(bookCopyId = command.bookCopyId, extendedUntil = loan.borrowedUntil.plusDays(14)))
             }
         }
     }
 
-    fun apply(event: BookCopyEvent) {
+    override fun apply(event: BookCopyEvent) {
         when (event) {
             is BookCopyAddedEvent -> {
-                check(!::id.isInitialized) {
-                    "BookCopy(${id.id}) has already been added, calling ${event.bookCopyId} on initialized BookCopy(${id.id})"
-                }
-
-                id = event.bookCopyId
-                isbn = event.isbn
+                id = event.bookCopyId;
+                isbn = event.isbn;
                 bookCopyStatus = BookCopyStatus.AVAILABLE
             }
 
             is BookCopyBorrowedEvent -> {
-                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE)
-
                 bookCopyStatus = BookCopyStatus.BORROWED
                 bookCopyLoan = BookCopyLoan(
                     borrowedBy = event.userId, borrowedAt = event.borrowedAt, borrowedUntil = event.borrowedUntil, extendCount = 0
@@ -117,39 +115,16 @@ class BookCopy {
             }
 
             is BookCopyReturnedEvent -> {
-                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.BORROWED)
-
                 bookCopyStatus = BookCopyStatus.AVAILABLE
                 bookCopyLoan = null
             }
 
-            is BookCopyDamagedEvent -> {
-                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED)
-                bookCopyStatus = BookCopyStatus.DAMAGED
-            }
-
-            is BookCopyRepairedEvent -> {
-                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.DAMAGED)
-                if (event.isDamageRepaired) bookCopyStatus = BookCopyStatus.AVAILABLE
-            }
-
-            is BookCopyLostEvent -> {
-                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.BORROWED, BookCopyStatus.DAMAGED)
-                bookCopyStatus = BookCopyStatus.LOST
-            }
-
-            is BookCopyFoundEvent -> {
-                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.LOST)
-                bookCopyStatus = BookCopyStatus.AVAILABLE
-            }
-
-            is BookCopyRetiredEvent -> {
-                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.AVAILABLE, BookCopyStatus.DAMAGED)
-                bookCopyStatus = BookCopyStatus.RETIRED
-            }
-
+            is BookCopyDamagedEvent -> bookCopyStatus = BookCopyStatus.DAMAGED
+            is BookCopyRepairedEvent -> if (event.isDamageRepaired) bookCopyStatus = BookCopyStatus.AVAILABLE
+            is BookCopyLostEvent -> bookCopyStatus = BookCopyStatus.LOST
+            is BookCopyFoundEvent -> bookCopyStatus = BookCopyStatus.AVAILABLE
+            is BookCopyRetiredEvent -> bookCopyStatus = BookCopyStatus.RETIRED
             is BookCopyLoanExtendedEvent -> {
-                checkStatus(bookCopyId = event.bookCopyId, BookCopyStatus.BORROWED)
                 val loan = checkNotNull(bookCopyLoan) {
                     "BookCopy(${id.id}) cannot be extended without an active loan"
                 }
@@ -167,5 +142,6 @@ class BookCopy {
             "BookCopy(${id.id}) must be in one of states ${allowed.toList()} but is in '$bookCopyStatus'"
         }
     }
+
 
 }

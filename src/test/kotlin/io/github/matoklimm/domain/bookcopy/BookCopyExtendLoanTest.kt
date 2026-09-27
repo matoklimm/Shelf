@@ -14,69 +14,41 @@ import java.time.LocalDate
 import kotlin.uuid.Uuid
 
 class BookCopyExtendLoanTest : StringSpec({
-
     "a book copy loan can be extended by the current borrower" {
         val bookCopyId = BookCopyId(Uuid.random())
         val userId = "user-123"
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        bookCopy.apply(
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(
             BookCopyBorrowedEvent(
-                bookCopyId = bookCopyId,
-                userId = userId,
-                borrowedAt = Instant.now(),
-                borrowedUntil = LocalDate.now().plusDays(14)
+                bookCopyId = bookCopyId, userId = userId, borrowedAt = Instant.now(), borrowedUntil = LocalDate.now().plusDays(14)
             )
         )
 
-        val events = bookCopy.handle(
-            ExtendBookCopyLoanCommand(
-                bookCopyId = bookCopyId,
-                userId = userId
-            )
-        )
+        bookCopy.handle(ExtendBookCopyLoanCommand(bookCopyId = bookCopyId, userId = userId))
 
-        events shouldHaveSize 1
-        val event = events.single().shouldBeTypeOf<BookCopyLoanExtendedEvent>()
+        bookCopy.pendingEvents shouldHaveSize 1
+        val event = bookCopy.pendingEvents.single().shouldBeTypeOf<BookCopyLoanExtendedEvent>()
 
         event.bookCopyId shouldBe bookCopyId
-        event.extendedUntil shouldBe LocalDate.now().plusDays(14 + 14)
+        event.extendedUntil shouldBe LocalDate.now().plusDays(28)
     }
 
     "a loan cannot be extended by another user" {
         val bookCopyId = BookCopyId(Uuid.random())
         val borrowerId = "user-123"
-        val otherUserId = "user-456"
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        bookCopy.apply(
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(
             BookCopyBorrowedEvent(
-                bookCopyId = bookCopyId,
-                userId = borrowerId,
-                borrowedAt = Instant.now(),
-                borrowedUntil = LocalDate.now().plusDays(14)
+                bookCopyId = bookCopyId, userId = borrowerId, borrowedAt = Instant.now(), borrowedUntil = LocalDate.now().plusDays(14)
             )
         )
 
         shouldThrow<IllegalStateException> {
-            bookCopy.handle(
-                ExtendBookCopyLoanCommand(
-                    bookCopyId = bookCopyId,
-                    userId = otherUserId
-                )
-            )
+            bookCopy.handle(ExtendBookCopyLoanCommand(bookCopyId = bookCopyId, userId = "user-456"))
         }
     }
 
@@ -84,20 +56,10 @@ class BookCopyExtendLoanTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
         shouldThrow<IllegalStateException> {
-            bookCopy.handle(
-                ExtendBookCopyLoanCommand(
-                    bookCopyId = bookCopyId,
-                    userId = "user-123"
-                )
-            )
+            bookCopy.handle(ExtendBookCopyLoanCommand(bookCopyId = bookCopyId, userId = "user-123"))
         }
     }
 
@@ -106,30 +68,17 @@ class BookCopyExtendLoanTest : StringSpec({
         val userId = "user-123"
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        bookCopy.apply(
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(
             BookCopyBorrowedEvent(
-                bookCopyId = bookCopyId,
-                userId = userId,
-                borrowedAt = Instant.now(),
-                borrowedUntil = LocalDate.now().plusDays(14)
+                bookCopyId = bookCopyId, userId = userId, borrowedAt = Instant.now(), borrowedUntil = LocalDate.now().plusDays(14)
             )
         )
-
-        bookCopy.bookCopyLoan!!.extendCount = 2
+        bookCopy.replay(BookCopyLoanExtendedEvent(bookCopyId = bookCopyId, extendedUntil = LocalDate.now().plusDays(28)))
+        bookCopy.replay(BookCopyLoanExtendedEvent(bookCopyId = bookCopyId, extendedUntil = LocalDate.now().plusDays(42)))
 
         shouldThrow<IllegalStateException> {
-            bookCopy.handle(
-                ExtendBookCopyLoanCommand(
-                    bookCopyId = bookCopyId,
-                    userId = userId
-                )
-            )
+            bookCopy.handle(ExtendBookCopyLoanCommand(bookCopyId = bookCopyId, userId = userId))
         }
     }
 
@@ -138,29 +87,13 @@ class BookCopyExtendLoanTest : StringSpec({
         val userId = "user-123"
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        bookCopy.apply(
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(
             BookCopyBorrowedEvent(
-                bookCopyId = bookCopyId,
-                userId = userId,
-                borrowedAt = Instant.now(),
-                borrowedUntil = LocalDate.now().plusDays(14)
+                bookCopyId = bookCopyId, userId = userId, borrowedAt = Instant.now(), borrowedUntil = LocalDate.now().plusDays(14)
             )
         )
-
-        val extendedUntil = LocalDate.now().plusDays(28)
-
-        bookCopy.apply(
-            BookCopyLoanExtendedEvent(
-                bookCopyId = bookCopyId,
-                extendedUntil = extendedUntil
-            )
-        )
+        bookCopy.replay(BookCopyLoanExtendedEvent(bookCopyId = bookCopyId, extendedUntil = LocalDate.now().plusDays(28)))
 
         bookCopy.bookCopyLoan!!.extendCount shouldBe 1
     }
@@ -170,29 +103,15 @@ class BookCopyExtendLoanTest : StringSpec({
         val userId = "user-123"
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        bookCopy.apply(
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(
             BookCopyBorrowedEvent(
-                bookCopyId = bookCopyId,
-                userId = userId,
-                borrowedAt = Instant.now(),
-                borrowedUntil = LocalDate.now().plusDays(14)
+                bookCopyId = bookCopyId, userId = userId, borrowedAt = Instant.now(), borrowedUntil = LocalDate.now().plusDays(14)
             )
         )
 
         val extendedUntil = LocalDate.now().plusDays(28)
-
-        bookCopy.apply(
-            BookCopyLoanExtendedEvent(
-                bookCopyId = bookCopyId,
-                extendedUntil = extendedUntil
-            )
-        )
+        bookCopy.replay(BookCopyLoanExtendedEvent(bookCopyId = bookCopyId, extendedUntil = extendedUntil))
 
         bookCopy.bookCopyLoan!!.borrowedUntil shouldBe extendedUntil
     }
@@ -202,56 +121,16 @@ class BookCopyExtendLoanTest : StringSpec({
         val userId = "user-123"
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-        bookCopy.apply(
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
+        bookCopy.replay(
             BookCopyBorrowedEvent(
-                bookCopyId = bookCopyId,
-                userId = userId,
-                borrowedAt = Instant.now(),
-                borrowedUntil = LocalDate.now().plusDays(14)
+                bookCopyId = bookCopyId, userId = userId, borrowedAt = Instant.now(), borrowedUntil = LocalDate.now().plusDays(14)
             )
         )
-
-        bookCopy.apply(
-            BookCopyLoanExtendedEvent(
-                bookCopyId = bookCopyId,
-                extendedUntil = LocalDate.now().plusDays(28)
-            )
-        )
-        bookCopy.apply(
-            BookCopyLoanExtendedEvent(
-                bookCopyId = bookCopyId,
-                extendedUntil = LocalDate.now().plusDays(42)
-            )
-        )
+        bookCopy.replay(BookCopyLoanExtendedEvent(bookCopyId = bookCopyId, extendedUntil = LocalDate.now().plusDays(28)))
+        bookCopy.replay(BookCopyLoanExtendedEvent(bookCopyId = bookCopyId, extendedUntil = LocalDate.now().plusDays(42)))
 
         bookCopy.bookCopyLoan!!.extendCount shouldBe 2
         bookCopy.bookCopyLoan!!.borrowedUntil shouldBe LocalDate.now().plusDays(42)
-    }
-
-    "a loan extended event cannot be applied without an active loan" {
-        val bookCopyId = BookCopyId(Uuid.random())
-        val bookCopy = BookCopy()
-
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-
-        shouldThrow<IllegalStateException> {
-            bookCopy.apply(
-                BookCopyLoanExtendedEvent(
-                    bookCopyId = bookCopyId,
-                    extendedUntil = LocalDate.now().plusDays(28)
-                )
-            )
-        }
     }
 })

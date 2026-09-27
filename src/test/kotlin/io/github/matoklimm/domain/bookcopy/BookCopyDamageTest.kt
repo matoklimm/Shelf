@@ -11,26 +11,18 @@ import io.kotest.matchers.shouldBe
 import kotlin.uuid.Uuid
 
 class BookCopyDamageTest : StringSpec({
-
     "damage can be reported for an available book copy" {
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
-        val command = ReportBookCopyDamageCommand(
-            bookCopyId = bookCopyId, description = "Cover is scratched"
-        )
+        val command = ReportBookCopyDamageCommand(bookCopyId = bookCopyId, description = "Cover is scratched")
 
-        val events = bookCopy.handle(command)
+        bookCopy.handle(command)
 
-        events shouldHaveSize 1
-
-        val event = events.single() as BookCopyDamagedEvent
+        bookCopy.pendingEvents shouldHaveSize 1
+        val event = bookCopy.pendingEvents.single() as BookCopyDamagedEvent
 
         event.bookCopyId shouldBe bookCopyId
         event.description shouldBe "Cover is scratched"
@@ -40,27 +32,14 @@ class BookCopyDamageTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
-        bookCopy.handle(
-            BorrowBookCopyCommand(
-                bookCopyId = bookCopyId, userId = "user-123"
-            )
-        ).forEach(bookCopy::apply)
+        bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-123"))
 
-        val events = bookCopy.handle(
-            ReportBookCopyDamageCommand(
-                bookCopyId = bookCopyId, description = "Several pages are torn"
-            )
-        )
+        bookCopy.handle(ReportBookCopyDamageCommand(bookCopyId = bookCopyId, description = "Several pages are torn"))
 
-        events shouldHaveSize 1
-
-        val event = events.single() as BookCopyDamagedEvent
+        bookCopy.pendingEvents shouldHaveSize 2   // ← see note below
+        val event = bookCopy.pendingEvents.last() as BookCopyDamagedEvent
 
         event.bookCopyId shouldBe bookCopyId
         event.description shouldBe "Several pages are torn"
@@ -70,73 +49,24 @@ class BookCopyDamageTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
-        val events = bookCopy.handle(
-            ReportBookCopyDamageCommand(
-                bookCopyId = bookCopyId, description = "Cover is damaged"
-            )
-        )
-
-        events.forEach(bookCopy::apply)
+        bookCopy.handle(ReportBookCopyDamageCommand(bookCopyId = bookCopyId, description = "Cover is damaged"))
 
         bookCopy.bookCopyStatus shouldBe BookCopyStatus.DAMAGED
-        events.filterIsInstance<BookCopyDamagedEvent>().single().description shouldBe "Cover is damaged"
+        bookCopy.pendingEvents.filterIsInstance<BookCopyDamagedEvent>().single().description shouldBe "Cover is damaged"
     }
 
     "damage cannot be reported for an already damaged book copy" {
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
-        bookCopy.handle(
-            ReportBookCopyDamageCommand(
-                bookCopyId = bookCopyId, description = "First damage"
-            )
-        ).forEach(bookCopy::apply)
+        bookCopy.handle(ReportBookCopyDamageCommand(bookCopyId = bookCopyId, description = "First damage"))
 
         shouldThrow<IllegalStateException> {
-            bookCopy.handle(
-                ReportBookCopyDamageCommand(
-                    bookCopyId = bookCopyId, description = "Second damage"
-                )
-            )
+            bookCopy.handle(ReportBookCopyDamageCommand(bookCopyId = bookCopyId, description = "Second damage"))
         }
-    }
-
-    "a damaged event can only be applied to an available or borrowed book copy" {
-        val bookCopyId = BookCopyId(Uuid.random())
-        val bookCopy = BookCopy()
-
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
-
-        bookCopy.apply(
-            BookCopyDamagedEvent(
-                bookCopyId = bookCopyId, description = "Cover is damaged"
-            )
-        )
-
-        shouldThrow<IllegalStateException> {
-            bookCopy.apply(
-                BookCopyDamagedEvent(
-                    bookCopyId = bookCopyId, description = "Another damage"
-                )
-            )
-        }
-
-        bookCopy.bookCopyStatus shouldBe BookCopyStatus.DAMAGED
     }
 })

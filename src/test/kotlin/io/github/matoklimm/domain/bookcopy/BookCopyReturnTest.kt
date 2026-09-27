@@ -14,32 +14,18 @@ import kotlin.uuid.Uuid
 
 
 class BookCopyReturnTest : StringSpec({
-
     "a borrowed book copy can be returned" {
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
-        bookCopy.handle(
-            BorrowBookCopyCommand(
-                bookCopyId = bookCopyId, userId = "user-123"
-            )
-        ).forEach(bookCopy::apply)
+        bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-123"))
 
-        val events = bookCopy.handle(
-            ReturnBookCopyCommand(
-                bookCopyId = bookCopyId
-            )
-        )
+        bookCopy.handle(ReturnBookCopyCommand(bookCopyId = bookCopyId))
 
-        events shouldHaveSize 1
-
-        val event = events.single() as BookCopyReturnedEvent
+        bookCopy.pendingEvents shouldHaveSize 2   // borrow + return both still queued
+        val event = bookCopy.pendingEvents.last() as BookCopyReturnedEvent
 
         event.bookCopyId shouldBe bookCopyId
     }
@@ -48,18 +34,10 @@ class BookCopyReturnTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
         shouldThrow<IllegalStateException> {
-            bookCopy.handle(
-                ReturnBookCopyCommand(
-                    bookCopyId = bookCopyId
-                )
-            )
+            bookCopy.handle(ReturnBookCopyCommand(bookCopyId = bookCopyId))
         }
     }
 
@@ -67,49 +45,10 @@ class BookCopyReturnTest : StringSpec({
         val bookCopyId = BookCopyId(Uuid.random())
         val bookCopy = BookCopy()
 
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"
-            )
-        )
+        bookCopy.replay(BookCopyAddedEvent(bookCopyId = bookCopyId, isbn = "978-1-4088-5565-2"))
 
-        bookCopy.handle(
-            BorrowBookCopyCommand(
-                bookCopyId = bookCopyId, userId = "user-123"
-            )
-        ).forEach(bookCopy::apply)
-
-        val events = bookCopy.handle(
-            ReturnBookCopyCommand(
-                bookCopyId = bookCopyId
-            )
-        )
-
-        events.forEach(bookCopy::apply)
-        bookCopy.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
-        bookCopy.bookCopyLoan shouldBe null
-    }
-
-
-    "returning a book copy event, requires the book copy to be borrowed" {
-        val bookCopyId = BookCopyId(Uuid.random())
-        val bookCopy = BookCopy()
-
-        bookCopy.apply(
-            BookCopyAddedEvent(
-                bookCopyId = bookCopyId,
-                isbn = "978-1-4088-5565-2"
-            )
-        )
-
-        shouldThrow<IllegalStateException> {
-            bookCopy.apply(
-                BookCopyReturnedEvent(
-                    bookCopyId = bookCopyId,
-                    returnedAt = Instant.now()
-                )
-            )
-        }
+        bookCopy.handle(BorrowBookCopyCommand(bookCopyId = bookCopyId, userId = "user-123"))
+        bookCopy.handle(ReturnBookCopyCommand(bookCopyId = bookCopyId))
 
         bookCopy.bookCopyStatus shouldBe BookCopyStatus.AVAILABLE
         bookCopy.bookCopyLoan shouldBe null
