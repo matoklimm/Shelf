@@ -2,4 +2,4 @@ package io.github.matoklimm.domain.bookcopy.commands
 
 import io.github.matoklimm.domain.bookcopy.BookCopyId
 
-data class MarkBookCopyAsFoundCommand(val bookCopyId: BookCopyId): BookCopyCommand
+data class MarkBookCopyAsFoundCommand(override val bookCopyId: BookCopyId) : BookCopyCommand

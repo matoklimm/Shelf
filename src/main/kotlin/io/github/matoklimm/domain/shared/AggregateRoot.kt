@@ -1,6 +1,6 @@
 package io.github.matoklimm.domain.shared
 
-abstract class AggregateRoot<E> {
+abstract class AggregateRoot<E : Event> {
 
     var version: Int = 0
         private set

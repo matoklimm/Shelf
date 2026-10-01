@@ -1,3 +1,5 @@
 package io.github.matoklimm.domain.bookcopy.events
 
-sealed interface BookCopyEvent
+import io.github.matoklimm.domain.shared.Event
+
+sealed interface BookCopyEvent: Event

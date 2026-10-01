@@ -1,3 +1,5 @@
 package io.github.matoklimm.domain.bookcopy.commands
 
-data class AddBookCopyCommand(val isbn: String) : BookCopyCommand
+import io.github.matoklimm.domain.bookcopy.BookCopyId
+
+data class AddBookCopyCommand(val isbn: String, override val bookCopyId: BookCopyId? = null) : BookCopyCommand
